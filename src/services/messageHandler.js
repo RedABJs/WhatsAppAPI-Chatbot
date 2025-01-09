@@ -1,17 +1,24 @@
 import whatsappService from "./whatsappService.js";
 
 class MessageHandler {
+
+  constructor(){
+    this.appointmentState={}
+  }
+
   async handleIncomingMessage(message, senderInfo) {
 
     // console.log(message)
 
     if (message?.type === "text") {
-      const textMessage = message.text.body
-      if (this.isGreeting(textMessage.toLowerCase().trim())) {
+      const textMessage = message.text.body.toLowerCase().trim()
+      if (this.isGreeting(textMessage)) {
         this.sendWelcomeMessage(message.from, message.id, senderInfo)
       } else if(textMessage=="audio"||textMessage=="image"||textMessage=="document"||textMessage=="video"){
         this.sendMedia(message.from, textMessage)
-      } else {
+      } else if(this.appointmentState[message.from]){
+        await this.handleAppointmentFlow(message.from, textMessage)
+      }else {
         const response = 'Etche Guevarixto te estoy respondiendo: ' + textMessage
         await whatsappService.sendMessage(message.from, response, message.id)
       }
@@ -47,7 +54,7 @@ class MessageHandler {
         type: "reply",
         reply:{
           id: "m1_op1",
-          title: "No sé"
+          title: "Agendar"
         }
       },
       {
@@ -70,23 +77,24 @@ class MessageHandler {
   }
 
   async handleMenuOption(to, option){
-    let answer
+    let response
 
     switch (option){
-      case "no sé":
-        answer= "Yo tampoco."
+      case "agendar":
+        this.appointmentState[to]={step: 'name'}
+        response = "Ingresa tu nombre por favor."
         break
       case "llorar":
-        answer="Come together"
+        response="Come together"
         break
       case "reir":
-        answer="Let's remember this moment forever"
+        response="Let's remember this moment forever"
       default:
-        answer= "No entendí la selección. Escoge una opción nuevamente"
+        response= "No entendí la selección. Escoge una opción nuevamente"
       
     }
 
-    await whatsappService.sendMessage(to, answer)
+    await whatsappService.sendMessage(to, response)
   }
 
   async sendMedia(to, textMessage){
@@ -118,6 +126,62 @@ class MessageHandler {
     let messageTypeObject = mediaTypes.find(el=>el.type===textMessage)
 
     await whatsappService.sendMediaMessage(to, messageTypeObject.type, messageTypeObject.mediaUrl, messageTypeObject.caption);
+  }
+
+  completeAppointment(to){
+    const appointment = this.appointmentState[to]
+    delete this.appointmentState[to]
+
+    const userData=[
+      to,
+      appointment.name,
+      appointment.petName,
+      appointment.petType,
+      appointment.reason,
+      new Date().toISOString()
+    ]
+
+    console.log(userData)
+
+    return `
+    Gracias por agendar tu cita
+    
+    Resumen:
+    Nombre: ${appointment.name.charAt(0).toUpperCase()+appointment.name.slice(1)}
+    Nombre de la mascota: ${appointment.petName}
+    Tipo de la mascota: ${appointment.petType}
+    Razón de la consulta: ${appointment.reason}
+    `
+  }
+
+  async handleAppointmentFlow(to, message){
+    const state = this.appointmentState[to]
+    let response
+
+    
+    
+    switch (state.step) {
+      case 'name':
+        state.name=message
+        state.step='petName'
+        response = "¿Cuál es el nombre de la mascota?"
+        break;
+      case 'petName':
+        state.petName=message
+        state.step='petType'
+        response = "¿Cuál es el tipo de mascota?"
+        break;
+      case 'petType':
+        state.petType=message
+        state.step='reason'
+        response = "¿Cuál es el motivo de la consulta?"
+        break;
+      case 'reason':
+        state.reason=message
+        response = this.completeAppointment(to)
+        break;
+    }
+    await whatsappService.sendMessage(to, response)
   }
 }
 
