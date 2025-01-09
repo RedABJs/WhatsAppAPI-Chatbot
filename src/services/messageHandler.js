@@ -9,6 +9,8 @@ class MessageHandler {
       const textMessage = message.text.body
       if (this.isGreeting(textMessage.toLowerCase().trim())) {
         this.sendWelcomeMessage(message.from, message.id, senderInfo)
+      } else if(textMessage=="audio"||textMessage=="image"||textMessage=="document"||textMessage=="video"){
+        this.sendMedia(message.from, textMessage)
       } else {
         const response = 'Etche Guevarixto te estoy respondiendo: ' + textMessage
         await whatsappService.sendMessage(message.from, response, message.id)
@@ -85,6 +87,37 @@ class MessageHandler {
     }
 
     await whatsappService.sendMessage(to, answer)
+  }
+
+  async sendMedia(to, textMessage){
+
+    const mediaTypes = [
+      {
+        mediaUrl : 'https://s3.amazonaws.com/gndx.dev/medpet-audio.aac',
+        caption : 'Bienvenida',
+        type : 'audio'
+      },
+      {
+        mediaUrl :'https://s3.amazonaws.com/gndx.dev/medpet-imagen.png',
+        caption : '¡Esto es una Imagen!',
+        type : 'image'
+      },
+      {
+        mediaUrl : 'https://s3.amazonaws.com/gndx.dev/medpet-video.mp4',
+        caption : '¡Esto es una video!',
+        type : 'video'
+      },
+      {    
+        mediaUrl: 'https://s3.amazonaws.com/gndx.dev/medpet-file.pdf',
+        caption : '¡Esto es un PDF!',
+        type : 'document'
+
+      }
+    ]
+
+    let messageTypeObject = mediaTypes.find(el=>el.type===textMessage)
+
+    await whatsappService.sendMediaMessage(to, messageTypeObject.type, messageTypeObject.mediaUrl, messageTypeObject.caption);
   }
 }
 

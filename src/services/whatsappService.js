@@ -1,75 +1,76 @@
-import axios from "axios"
-import config from "../config/env.js"
+import sendToWhatsApp from "./httpRequest/sendToWhatsApp.js";
 
 class WhatsAppService {
 
   async sendMessage(to, body, messageId) {
-    try {
-      await axios({
-        method: 'POST',
-        url: `https://graph.facebook.com/${config.API_VERSION}/${config.BUSINESS_PHONE}/messages`,
-        headers: {
-          Authorization: `Bearer ${config.API_TOKEN}`,
-        },
-        data: {
-          messaging_product: 'whatsapp',
+    const data = {
+      messaging_product: 'whatsapp',
           to,
           text: { body },
           // context: {
           //   message_id: messageId,
           // },
-        },
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
     }
+    await sendToWhatsApp(data)
   }
 
   async markAsRead(messageId) {
-    try {
-      await axios({
-        method: 'POST',
-        url: `https://graph.facebook.com/${config.API_VERSION}/${config.BUSINESS_PHONE}/messages`,
-        headers: {
-          Authorization: `Bearer ${config.API_TOKEN}`,
-        },
-        data: {
+    const data = {
           messaging_product: "whatsapp",
           status: "read",
           message_id: messageId,
-        },
-      });
-    } catch (error) {
-      console.error('Error sending this message: ', error)
-    }
+        }
+    await sendToWhatsApp(data)
   }
 
   async sendWelcomeMenu(to, bodyText, buttons) {
-    try {
-      await axios({
-        method: 'POST',
-        url: `https://graph.facebook.com/${config.API_VERSION}/${config.BUSINESS_PHONE}/messages`,
-        headers: {
-          Authorization: `Bearer ${config.API_TOKEN}`,
-        },
-        data: {
-          messaging_product: "whatsapp",
-          // recipient_type: "individual",
-          to,
-          type: "interactive",
-          interactive: {
-            type: "button",
-            body: { text: bodyText},
-            action: {
-              buttons: buttons
-            }
-          }
-        },
-      });
-    } catch (error) {
-      console.error('Error sending this button reply message: ', error)
+    const data = {
+      messaging_product: "whatsapp",
+      // recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: bodyText},
+        action: {
+          buttons: buttons
+        }
+      }
     }
     
+    await sendToWhatsApp(data)   
+    
+  }
+
+  async sendMediaMessage(to, type, mediaURL, caption) {
+
+    const mediaObject={}
+
+    switch(type){
+      case 'audio':
+        mediaObject.audio={link: mediaURL}
+        break
+      case 'image':
+        mediaObject.image={link: mediaURL, caption: caption}
+        break
+      case 'video':
+        mediaObject.video={link: mediaURL, caption: caption}
+        break
+      case 'document':
+        mediaObject.document={link: mediaURL, caption:caption, filename: 'medpet-file.pdf'}
+        break
+      default: throw new Error ('Not soported media type')
+    }
+
+    const data = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: type,
+      ...mediaObject
+    }
+    
+    await sendToWhatsApp(data)
   }
 }
 
